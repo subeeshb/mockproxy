@@ -45,7 +45,7 @@ Recording and playback
 
 Each web service response is saved in its own file, with the folder structure in the output folder matching the url path. When a request is received, the application proxies the request to the upstream API if no response was previously recorded. If a recorded response is present, the contents of the response are processed and played back. 
 
-The application current supports request data in JSON format. You can insert dynamic values into recorded responses by enclosing python code within {{ ... }} blocks. Request data is converted into a dictionary and can be referenced using the 'request' variable.
+The application current supports request data in JSON format. You can edit recorded responses to insert dynamic values by enclosing python code within {{ ... }} blocks. Request data is converted into a dictionary and can be referenced using the 'request' variable.
 
 For example, with the following request data,
 
