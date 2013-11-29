@@ -11,6 +11,8 @@ import config
 app = Flask(__name__)
 
 DEFAULT_TEMPLATE_FOLDER = './templates/'
+HEADERS_FILE_SUFFIX = '.headers'
+REQUIRED_HEADERS = ["set-cookie"]
 
 def get_response_template(path):
     filename = os.path.join(template_folder, path)
@@ -18,6 +20,15 @@ def get_response_template(path):
     with file(filename) as f:
         resp_template = f.read()
     return resp_template
+
+def get_response_headers(path):
+    filename = os.path.join(template_folder, path + HEADERS_FILE_SUFFIX)
+    headers = []
+    if os.path.isfile(filename):
+        with file(filename, 'r') as f:
+            for line in f:
+                headers.append(tuple(line.replace('\n','').split('::')))
+    return headers
 
 def extract_tokens(template):
     tokens = {}
@@ -77,12 +88,17 @@ def ensure_dir(f):
     if not os.path.exists(d):
         os.makedirs(d)
 
-def save_live_response(path, response_data):
-    filename = os.path.join(template_folder, path)
-    ensure_dir(filename)
-    with open(filename, 'w') as output_file:
+def save_live_response(path, response_data, headers):
+    response_filename = os.path.join(template_folder, path)
+    ensure_dir(response_filename)
+    with open(response_filename, 'w') as output_file:
         output_file.write(response_data)
 
+    headers_filename = os.path.join(template_folder, path + HEADERS_FILE_SUFFIX)
+    with open(headers_filename, 'w') as output_file:
+        for key, value in headers:
+            header_string = '%s::%s\n' % (key, value)
+            output_file.write(header_string)
 
 
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
@@ -99,14 +115,19 @@ def handle_path(path):
         else:
             response = response_template
         print 'Serving recorded response.'
-        return Response(response, mimetype='application/json')
+        resp = Response(response, mimetype='application/json')
+        headers = get_response_headers(path)
+        for key, value in headers:
+            if key in REQUIRED_HEADERS:
+                resp.headers.add(key, value)
+        return resp
     except IOError:
         try:
             live_response, headers = get_live_response(request, config.BASE_URL_PATH + path)
-            save_live_response(path, live_response)
+            save_live_response(path, live_response, headers)
             resp = Response(live_response, mimetype='application/json')
             for key, value in headers:
-                if key in ["set-cookie"]:
+                if key in REQUIRED_HEADERS:
                     resp.headers.add(key, value)
             print 'Serving live response.'
             return resp
